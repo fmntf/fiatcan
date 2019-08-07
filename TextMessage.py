@@ -1,3 +1,5 @@
+import time
+import math
 from can import Message
 import unidecode
 from textwrap import wrap
@@ -71,19 +73,64 @@ class TextMessage:
 
     bitstrings_map = {}
 
-    instpanel_prefix1 = "0001000000011010"
-    instpanel_prefix2 = "0001000100011010"
+    instpanel_menu_prefix1 = "0001000000011010"
+    instpanel_menu_prefix2 = "0001000100011010"
+    instpanel_text_prefix1 = "0001000000010110"
+    instpanel_text_prefix2 = "0001000100010110"
 
     def __init__(self):
         for key, value in self.char_map.items():
             self.bitstrings_map[value] = key
 
-    def encode_instpanel(self, message):
-        if len(message) > 13:
-            message = message[:13]
-        message = message.upper()
+    def encode_instpanel(self, message, is_menu):
+        bitstring = self.encode_string(message).ljust(96, '0')
+
+        if is_menu:
+            line1 = self.instpanel_menu_prefix1 + bitstring[:48]
+            line2 = self.instpanel_menu_prefix2 + bitstring[48:]
+        else:
+            line1 = self.instpanel_text_prefix1 + bitstring[:48]
+            line2 = self.instpanel_text_prefix2 + bitstring[48:]
+
+        can1 = Message(arbitration_id=CANID_BM_TEXT_MESSAGE, data=self.bitstring_to_bytes(line1))
+        can2 = Message(arbitration_id=CANID_BM_TEXT_MESSAGE, data=self.bitstring_to_bytes(line2))
+
+        return can1, can2
+
+    def encode_music(self, track, artist, album=None):
+        bitstring = ""
+        if album:
+            bitstring += self.encode_string(album)
+        else:
+            bitstring += self.string_end
+        bitstring += self.field_separator
+
+        bitstring += self.encode_string(artist)
+        bitstring += self.field_separator
+
+        bitstring += self.encode_string(track)
+
+        messages = []
+        nmessages = math.ceil(len(bitstring)/48) -1
+        i = 0
+        for bits in wrap(bitstring, 48):
+            if len(bits) < 48:
+                bits = bits.ljust(48, '0')
+            bits = ba(hex='0x{}{}2A'.format(nmessages, i)).bin + bits
+            messages.append(
+                Message(arbitration_id=CANID_BM_TEXT_MESSAGE, data=self.bitstring_to_bytes(bits))
+            )
+            i += 1
+
+        return messages
+
+    def encode_string(self, string):
+        string = string.upper()
+        if len(string) > 15:
+            string = string[:15]
+
         chunks = []
-        for char in message:
+        for char in string:
             if char in self.char_map:
                 chunks.append(self.char_map[char])
             else:
@@ -93,17 +140,7 @@ class TextMessage:
                 else:
                     chunks.append(self.char_map['?'])
 
-        bitstring = ''.join(chunks).ljust(96, '0')
-        line1 = self.instpanel_prefix1 + bitstring[:48]
-        line2 = self.instpanel_prefix2 + bitstring[48:]
-
-        can1 = Message(arbitration_id=CANID_BM_TEXT_MESSAGE, data=self.bitstring_to_bytes(line1))
-        can2 = Message(arbitration_id=CANID_BM_TEXT_MESSAGE, data=self.bitstring_to_bytes(line2))
-
-        #d1 = ''.join('{:02x}'.format(x) for x in line1).upper()
-        #d2 = ''.join('{:02x}'.format(x) for x in line2).upper()
-
-        return can1, can2
+        return ''.join(chunks)
 
     def decode(self, messages):
         bitstring = ""
@@ -136,3 +173,22 @@ class TextMessage:
 
     def bitstring_to_bytes(self, s):
         return int(s, 2).to_bytes(len(s) // 8, byteorder='big')
+
+    def send_instpanel(self, bus, string, is_menu):
+        print("Showing '{}' on instrument panel".format(string))
+        messages = self.encode_instpanel(string, is_menu)
+        bus.send(messages[0])
+        time.sleep(0.01)
+        bus.send(messages[1])
+
+    def send_music(self, bus, track, artist, album=None):
+        messages = self.encode_music(track, artist, album)
+        for message in messages:
+            bus.send(message)
+            time.sleep(0.01)
+
+    def clear_instpanel(self, bus):
+        print("Clearing instrument panel")
+        bus.send(
+            Message(arbitration_id=CANID_BM_TEXT_MESSAGE, data=bytearray(MESSAGE_INSTPANEL_CLEAR.bytes))
+        )
