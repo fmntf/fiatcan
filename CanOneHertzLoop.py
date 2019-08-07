@@ -21,7 +21,7 @@ class CanOneHertzLoop(threading.Thread):
 
         self.bm_ch_playing = Message(arbitration_id=CANID_BM_AUDIO_CHANNEL, data=bytearray(MASK_AUDIOCH_MEDIAPLAYER.bytes))
         self.bm_ch_muted = Message(arbitration_id=CANID_BM_AUDIO_CHANNEL, data=bytearray(MASK_AUDIOCH_MUTED.bytes))
-        self.bm_channel = self.bm_ch_muted
+        self.bm_channel = self.bm_ch_playing
 
     def run(self):
         watchdog1 = Message(arbitration_id=CANID_BM_WATCHDOG, data=bytearray(MESSAGE_BM_WATCHDOG1.bytes))
@@ -31,13 +31,11 @@ class CanOneHertzLoop(threading.Thread):
         while self.should_run:
             if self.body_operational and self.bm_operational:
                 self.bus.send(self.bm_channel)
-                time.sleep(0.3)
+                time.sleep(0.2)
 
-                self.bus.send(Message(arbitration_id=CANID_BM_TRACK_TIME,
-                                      data=bytearray(ba(
-                                      hex="0x{:02d}{:02d}487800000000".format(self.track_position // 60,
-                                                                              self.track_position % 60)).bytes)))
-                time.sleep(0.3)
+                seconds = "0x{:02d}{:02d}487800000000".format(self.track_position // 60,self.track_position % 60)
+                self.bus.send(Message(arbitration_id=CANID_BM_TRACK_TIME, data=bytearray(ba(hex=seconds).bytes)))
+                time.sleep(0.05)
 
                 self.bus.send(watchdog1)
                 time.sleep(0.02)
@@ -53,10 +51,6 @@ class CanOneHertzLoop(threading.Thread):
 
     def on_bm_playing(self, is_playing):
         self.bm_is_playing = is_playing
-        if is_playing:
-            self.bm_channel = self.bm_ch_playing
-        else:
-            self.bm_channel = self.bm_ch_muted
 
     def on_track_position(self, seconds):
         self.track_position = seconds

@@ -1,6 +1,8 @@
 import re
 import threading
 import time
+from concurrent.futures.thread import ThreadPoolExecutor
+
 import dbus
 import dbus.mainloop.glib
 from gi.repository import GLib
@@ -13,10 +15,12 @@ class BluetoothPlayer:
     bus = None
     connect_thread = None
     should_run = True
+    executor = None
 
     bt_connected = False
     media_connected = False
     music_playing = False
+    possible_pause = False
     media_player = None
 
     pause_music = None
@@ -35,6 +39,7 @@ class BluetoothPlayer:
             signal_name="PropertiesChanged",
             path_keyword="path")
 
+        self.executor = ThreadPoolExecutor(max_workers=4)
         thread = threading.Thread(target=self.start)
         thread.start()
 
@@ -43,6 +48,20 @@ class BluetoothPlayer:
         self.connect_thread.start()
 
         self.mainloop.run()
+
+    def evaluate_play_status(self, new_status):
+        if new_status == "playing":
+            self.possible_pause = False
+            self.music_playing = True
+            print("Music is playing")
+            self.fire_event('playing', self.music_playing)
+        else:
+            self.possible_pause = True
+            time.sleep(0.5)
+            if self.possible_pause:
+                self.music_playing = False
+                print("Music is paused")
+                self.fire_event('playing', self.music_playing)
 
     def prepare_shutdown(self):
         self.should_run = False
@@ -101,13 +120,7 @@ class BluetoothPlayer:
                 print("Track: {} - {}".format(track["Title"], track["Artist"]))
 
             if "Status" in changed:
-                if changed["Status"] == "playing":
-                    self.music_playing = True
-                    print("Music is playing")
-                else:
-                    self.music_playing = False
-                    print("Music is paused")
-                self.fire_event('playing', self.music_playing)
+                self.executor.submit(self.evaluate_play_status, changed["Status"])
 
             if "Position" in changed:
                 player_position = int(changed["Position"]/1000)

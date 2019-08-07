@@ -1,4 +1,6 @@
 import os
+import time
+
 import can
 import threading
 from can import Message
@@ -104,6 +106,8 @@ class BodyComputerManager(threading.Thread):
             self.tm.send_instpanel(self.bus, message, is_menu)
 
     def radiounit_display(self, title, artist, album):
+        Message(arbitration_id=CANID_BM_TRACK_TIME, data=bytearray(MESSAGE_BM_ZERO_SECONDS.bytes))
+        time.sleep(0.01)
         self.tm.send_music(self.bus, title, artist, album)
 
     def fire_event(self, event, *args):
