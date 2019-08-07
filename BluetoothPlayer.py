@@ -1,7 +1,6 @@
 import re
 import threading
 import time
-
 import dbus
 import dbus.mainloop.glib
 from gi.repository import GLib
@@ -19,8 +18,11 @@ class BluetoothPlayer:
     media_connected = False
     music_playing = False
     media_player = None
+
     pause_music = None
     play_music = None
+    next_music = None
+    prev_music = None
 
     def __init__(self):
         dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
@@ -67,7 +69,7 @@ class BluetoothPlayer:
                             break
                         except:
                             pass
-            time.sleep(30)
+            time.sleep(50)
 
 
     def properties_changed(self, interface, changed, invalidated, path):
@@ -87,6 +89,8 @@ class BluetoothPlayer:
                     media_interface = dbus.Interface(obj, "org.bluez.MediaPlayer1")
                     self.pause_music = media_interface.get_dbus_method("Pause")
                     self.play_music = media_interface.get_dbus_method("Play")
+                    self.next_music = media_interface.get_dbus_method("Next")
+                    self.prev_music = media_interface.get_dbus_method("Previous")
                     time.sleep(5)
                     self.play_music()
 
@@ -121,7 +125,11 @@ class BluetoothPlayer:
 
     def on_button(self, key):
         print("[player] on_button "+key)
-        if key == 'mute':
+        if key == 'next':
+            self.next_music()
+        elif key == 'prev':
+            self.prev_music()
+        elif key == 'mute':
             if self.media_connected:
                 if not self.music_playing:
                     self.play_music()

@@ -108,7 +108,7 @@ class TextMessage:
         bitstring += self.encode_string(artist)
         bitstring += self.field_separator
 
-        bitstring += self.encode_string(track)
+        bitstring += self.encode_string(track, 18)
 
         messages = []
         nmessages = math.ceil(len(bitstring)/48) -1
@@ -124,10 +124,10 @@ class TextMessage:
 
         return messages
 
-    def encode_string(self, string):
+    def encode_string(self, string, maxlen=14):
         string = string.upper()
-        if len(string) > 15:
-            string = string[:15]
+        if len(string) > maxlen:
+            string = string[:maxlen]
 
         chunks = []
         for char in string:

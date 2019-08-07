@@ -20,7 +20,6 @@ onehz_loop = CanOneHertzLoop(bus)
 onehz_loop.start()
 
 body_manager.on_event('button',            menu.on_button)
-body_manager.on_event('button',            player.on_button)
 body_manager.on_event('body_state_change', onehz_loop.on_body_state_change)
 body_manager.on_event('bm_state_change',   onehz_loop.on_bm_state_change)
 body_manager.on_event('bm_playing',        onehz_loop.on_bm_playing)
@@ -28,6 +27,8 @@ body_manager.on_event('bm_playing',        player.on_bm_playing)
 
 menu.on_event('instpanel_display', body_manager.instpanel_display)
 menu.on_event('shutdown',          onehz_loop.on_shutdown)
+menu.on_event('remote',            player.on_button)
+
 
 player.on_event('track',    body_manager.radiounit_display)
 player.on_event('position', onehz_loop.on_track_position)

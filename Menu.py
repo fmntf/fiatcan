@@ -42,7 +42,7 @@ class Menu:
             self.fire_event('instpanel_display', "Shutdown...")
             time.sleep(2)
             self.fire_event('instpanel_display', None)
-            #subprocess.run(['sudo', 'shutdown'])
+            subprocess.run(['sudo', 'shutdown'])
 
         def submenu_callback():
             self.active_items.append(0)
@@ -77,6 +77,8 @@ class Menu:
                 self.active_items[-1] = idx
                 item = self.get_active_item()
                 self.fire_event('instpanel_display', item.string, True)
+            else:
+                self.fire_event('remote', 'prev')
 
         elif key == 'up':
             if len(self.active_items) > 0:
@@ -86,6 +88,8 @@ class Menu:
                 self.active_items[-1] = idx
                 item = self.get_active_item()
                 self.fire_event('instpanel_display', item.string, True)
+            else:
+                self.fire_event('remote', 'next')
 
         elif key == 'mute':
             if len(self.active_items) > 0:
@@ -95,6 +99,8 @@ class Menu:
                     self.fire_event('instpanel_display', item.string, True)
                 else:
                     self.fire_event('instpanel_display', None)
+            else:
+                self.fire_event('remote', 'mute')
 
     def get_active_item(self):
         item = self.ivr
