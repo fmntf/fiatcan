@@ -1,4 +1,7 @@
+import re
 import threading
+import time
+
 import dbus
 import dbus.mainloop.glib
 from gi.repository import GLib
@@ -7,14 +10,15 @@ from gi.repository import GLib
 class BluetoothPlayer:
 
     listeners = {}
+    mainloop = None
+    bus = None
+    connect_thread = None
+    should_run = True
 
     bt_connected = False
     media_connected = False
     music_playing = False
-
-    mainloop = None
-    bus = None
-
+    media_player = None
     pause_music = None
     play_music = None
 
@@ -33,10 +37,38 @@ class BluetoothPlayer:
         thread.start()
 
     def start(self):
+        self.connect_thread = threading.Thread(target=self.connect_device)
+        self.connect_thread.start()
+
         self.mainloop.run()
 
     def prepare_shutdown(self):
+        self.should_run = False
         self.mainloop.quit()
+
+    def connect_device(self):
+        while self.should_run:
+            time.sleep(10)
+            if not self.bt_connected:
+                print("Trying to connect devices...")
+                obj = self.bus.get_object("org.bluez", "/")
+                interface = dbus.Interface(obj, "org.freedesktop.DBus.ObjectManager")
+                regexp = re.compile("(^/org/bluez/hci[0-9]/dev_[A-Z0-9_]+$)")
+
+                for object in interface.GetManagedObjects():
+                    matches = regexp.match(object)
+                    if matches is not None:
+                        hciobj = self.bus.get_object("org.bluez", matches[0])
+                        hciiface = dbus.Interface(hciobj, "org.bluez.Device1")
+                        conn = hciiface.get_dbus_method("Connect")
+                        print("Connecting to {}".format(matches[0]))
+                        try:
+                            conn()
+                            break
+                        except:
+                            pass
+            time.sleep(30)
+
 
     def properties_changed(self, interface, changed, invalidated, path):
         if interface == "org.bluez.Device1":
@@ -45,14 +77,18 @@ class BluetoothPlayer:
                 print("Bluetooth connected: {}".format(self.bt_connected))
 
         if interface == "org.bluez.MediaControl1":
+            if "Player" in changed:
+                self.media_player = changed["Player"]
             if "Connected" in changed:
                 self.media_connected = changed["Connected"]
                 if self.media_connected:
-                    print("Media is connected")
-                    obj = self.bus.get_object("org.bluez", changed["Player"])
+                    print("Media is connected, " + self.media_player)
+                    obj = self.bus.get_object("org.bluez", self.media_player)
                     media_interface = dbus.Interface(obj, "org.bluez.MediaPlayer1")
                     self.pause_music = media_interface.get_dbus_method("Pause")
                     self.play_music = media_interface.get_dbus_method("Play")
+                    time.sleep(5)
+                    self.play_music()
 
         elif interface == "org.bluez.MediaPlayer1":
             if "Track" in changed:
