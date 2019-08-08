@@ -1,10 +1,9 @@
+import dbus
+import dbus.mainloop.glib
 import re
 import threading
 import time
 from concurrent.futures.thread import ThreadPoolExecutor
-
-import dbus
-import dbus.mainloop.glib
 from gi.repository import GLib
 
 
@@ -34,10 +33,10 @@ class BluetoothPlayer:
         self.bus = dbus.SystemBus()
 
         self.bus.add_signal_receiver(self.properties_changed,
-            bus_name="org.bluez",
-            dbus_interface="org.freedesktop.DBus.Properties",
-            signal_name="PropertiesChanged",
-            path_keyword="path")
+                                     bus_name="org.bluez",
+                                     dbus_interface="org.freedesktop.DBus.Properties",
+                                     signal_name="PropertiesChanged",
+                                     path_keyword="path")
 
         self.executor = ThreadPoolExecutor(max_workers=4)
         thread = threading.Thread(target=self.start)
@@ -90,7 +89,6 @@ class BluetoothPlayer:
                             pass
             time.sleep(50)
 
-
     def properties_changed(self, interface, changed, invalidated, path):
         if interface == "org.bluez.Device1":
             if "Connected" in changed:
@@ -116,7 +114,7 @@ class BluetoothPlayer:
         elif interface == "org.bluez.MediaPlayer1":
             if "Track" in changed:
                 track = changed["Track"]
-                self.fire_event('track', track["Title"], track["Artist"], track["Album"])
+                self.fire_event('track', track["Title"], track["Artist"])
                 print("Track: {} - {}".format(track["Title"], track["Artist"]))
 
             if "Status" in changed:
@@ -149,9 +147,7 @@ class BluetoothPlayer:
                 else:
                     self.pause_music()
 
-
     def fire_event(self, event, *args):
-        print("[player] fired "+event)
         if event not in self.listeners:
             return
         for listener in self.listeners[event]:

@@ -1,6 +1,6 @@
 import can
-import time
 import os
+import time
 from BluetoothPlayer import BluetoothPlayer
 from BodyComputerManager import BodyComputerManager
 from CanOneHertzLoop import CanOneHertzLoop
@@ -26,6 +26,7 @@ body_manager.on_event('bm_playing',        onehz_loop.on_bm_playing)
 body_manager.on_event('bm_playing',        player.on_bm_playing)
 
 menu.on_event('instpanel_display', body_manager.instpanel_display)
+menu.on_event('instpanel_display', onehz_loop.instpanel_display)
 menu.on_event('shutdown',          onehz_loop.on_shutdown)
 menu.on_event('remote',            player.on_button)
 

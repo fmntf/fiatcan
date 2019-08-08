@@ -105,12 +105,14 @@ with open(args.candump_trace) as trace:
                 description = "B&M is muted"
             if payload_ba & MASK_AUDIOCH_PHONE == MASK_AUDIOCH_PHONE:
                 description = "B&M selects phone channel"
-            if payload_ba & MASK_AUDIOCH_VOICE == MASK_AUDIOCH_VOICE:
+            elif payload_ba & MASK_AUDIOCH_VOICE == MASK_AUDIOCH_VOICE:
                 description = "B&M selects voice channel"
-            if payload_ba & MASK_AUDIOCH_NAVIGATION == MASK_AUDIOCH_NAVIGATION:
+            elif payload_ba & MASK_AUDIOCH_NAVIGATION == MASK_AUDIOCH_NAVIGATION:
                 description = "B&M selects navigation channel"
-            if payload_ba & MASK_AUDIOCH_MEDIAPLAYER == MASK_AUDIOCH_MEDIAPLAYER:
+            elif payload_ba & MASK_AUDIOCH_MEDIAPLAYER == MASK_AUDIOCH_MEDIAPLAYER:
                 description = "B&M selects media player channel"
+            if payload_ba & MASK_AUDIOCH_LOCKED == MASK_AUDIOCH_LOCKED:
+                description += " (locked)"
 
         elif arb_id == CANID_BM_TRACK_TIME:
             if payload_ba == MESSAGE_BM_START1_SECONDS or payload_ba == MESSAGE_BM_START2_SECONDS:

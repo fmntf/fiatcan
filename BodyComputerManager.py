@@ -1,8 +1,7 @@
-import os
-import time
-
 import can
+import os
 import threading
+import time
 from can import Message
 from FiatProtocol import *
 from TextMessage import TextMessage
@@ -13,6 +12,7 @@ class BodyComputerManager(threading.Thread):
     should_run = True
     listeners = {}
     tm = TextMessage()
+    button_debouncers = {}
 
     def __init__(self, bus):
         super().__init__()
@@ -36,21 +36,21 @@ class BodyComputerManager(threading.Thread):
 
                 if message.arbitration_id == CANID_BODY_BUTTONS:  # buttons
                     if payload & MASK_BUTTON_VOLUME_UP == MASK_BUTTON_VOLUME_UP:
-                        self.fire_event('button', 'vol+')
+                        self.debounce_button('vol+')
                     if payload & MASK_BUTTON_VOLUME_DN == MASK_BUTTON_VOLUME_DN:
-                        self.fire_event('button', 'vol-')
+                        self.debounce_button('vol-')
                     if payload & MASK_BUTTON_WINDOWS == MASK_BUTTON_WINDOWS:
-                        self.fire_event('button', 'win')
+                        self.debounce_button('win')
                     if payload & MASK_BUTTON_MUTE == MASK_BUTTON_MUTE:
-                        self.fire_event('button', 'mute')
+                        self.debounce_button('mute')
                     if payload & MASK_BUTTON_UP == MASK_BUTTON_UP:
-                        self.fire_event('button', 'up')
+                        self.debounce_button('up')
                     if payload & MASK_BUTTON_DOWN == MASK_BUTTON_DOWN:
-                        self.fire_event('button', 'down')
+                        self.debounce_button('down')
                     if payload & MASK_BUTTON_MENU == MASK_BUTTON_MENU:
-                        self.fire_event('button', 'menu')
+                        self.debounce_button('menu')
                     if payload & MASK_BUTTON_SOURCE == MASK_BUTTON_SOURCE:
-                        self.fire_event('button', 'src')
+                        self.debounce_button('src')
 
                 elif message.arbitration_id == CANID_BODY_STATUS:
                     if bm_operational:
@@ -58,7 +58,7 @@ class BodyComputerManager(threading.Thread):
                     else:
                         sys_status = ba(hex='0x000A')
 
-                    print("Body computer asked for status, answering {}...".format(sys_status))
+                    #print("Body computer asked for status, answering {}...".format(sys_status))
                     self.bus.send(Message(arbitration_id=CANID_BM_STATUS, data=bytearray(sys_status.bytes)))
                     if sys_status & MESSAGE_STATUS_WORKING == MESSAGE_STATUS_WORKING:
                         if not body_operational:
@@ -72,7 +72,7 @@ class BodyComputerManager(threading.Thread):
                         self.fire_event('bm_state_change', bm_operational)
 
                 elif message.arbitration_id == CANID_4003_PROXI:
-                    print("Answering PROXI request...")
+                    print("Answering PROXI request")
                     self.bus.send(Message(arbitration_id=CANID_BM_PROXI, data=bytearray(payload.bytes)))
 
                 elif message.arbitration_id == CANID_4003_CLOCK:
@@ -105,13 +105,18 @@ class BodyComputerManager(threading.Thread):
         else:
             self.tm.send_instpanel(self.bus, message, is_menu)
 
-    def radiounit_display(self, title, artist, album):
-        Message(arbitration_id=CANID_BM_TRACK_TIME, data=bytearray(MESSAGE_BM_ZERO_SECONDS.bytes))
-        time.sleep(0.01)
-        self.tm.send_music(self.bus, title, artist, album)
+    def radiounit_display(self, title, artist):
+        self.tm.send_music(self.bus, title, artist)
+
+    def debounce_button(self, button):
+        if button in self.button_debouncers:
+            if time.time() - self.button_debouncers[button] < 0.3:
+                return
+
+        self.button_debouncers[button] = time.time()
+        self.fire_event('button', button)
 
     def fire_event(self, event, *args):
-        print("[bodymgr] fired "+event)
         if event not in self.listeners:
             return
         for listener in self.listeners[event]:

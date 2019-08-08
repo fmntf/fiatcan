@@ -1,5 +1,5 @@
-import time
 import threading
+import time
 from can import Message
 from FiatProtocol import *
 
@@ -11,15 +11,18 @@ class CanOneHertzLoop(threading.Thread):
     bm_operational = True
     track_position = 0
     bm_ch_playing = None
+    bm_ch_playing_locked = None
     bm_ch_muted = None
     bm_channel = None
     bm_is_playing = False
+    menu_opened = False
 
     def __init__(self, bus):
         super().__init__()
         self.bus = bus
 
         self.bm_ch_playing = Message(arbitration_id=CANID_BM_AUDIO_CHANNEL, data=bytearray(MASK_AUDIOCH_MEDIAPLAYER.bytes))
+        self.bm_ch_playing_locked = Message(arbitration_id=CANID_BM_AUDIO_CHANNEL, data=bytearray((MASK_AUDIOCH_MEDIAPLAYER | MASK_AUDIOCH_LOCKED).bytes))
         self.bm_ch_muted = Message(arbitration_id=CANID_BM_AUDIO_CHANNEL, data=bytearray(MASK_AUDIOCH_MUTED.bytes))
         self.bm_channel = self.bm_ch_playing
 
@@ -51,8 +54,13 @@ class CanOneHertzLoop(threading.Thread):
 
     def on_bm_playing(self, is_playing):
         self.bm_is_playing = is_playing
+        if self.menu_opened:
+            self.bm_channel = self.bm_ch_playing_locked
+        else:
+            self.bm_channel = self.bm_ch_playing
 
     def on_track_position(self, seconds):
+        print("Received track position: {}".format(seconds))
         self.track_position = seconds
 
     def prepare_shutdown(self):
@@ -66,3 +74,14 @@ class CanOneHertzLoop(threading.Thread):
 
     def on_shutdown(self):
         self.bm_operational = False
+
+    def instpanel_display(self, message=None, is_menu=False):
+        if message is None:
+            self.menu_opened = False
+        else:
+            self.menu_opened = True
+
+        if self.menu_opened:
+            self.bm_channel = self.bm_ch_playing_locked
+        else:
+            self.bm_channel = self.bm_ch_playing

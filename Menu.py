@@ -42,7 +42,7 @@ class Menu:
             self.fire_event('instpanel_display', "Shutdown...")
             time.sleep(2)
             self.fire_event('instpanel_display', None)
-            subprocess.run(['sudo', 'shutdown'])
+            subprocess.run(['sudo', 'poweroff'])
 
         def submenu_callback():
             self.active_items.append(0)
@@ -117,7 +117,6 @@ class Menu:
         return menu
 
     def fire_event(self, event, *args):
-        print("[menu] fired "+event)
         if event not in self.listeners:
             return
         for listener in self.listeners[event]:

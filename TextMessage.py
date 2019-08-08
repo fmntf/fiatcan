@@ -1,7 +1,7 @@
-import time
 import math
-from can import Message
+import time
 import unidecode
+from can import Message
 from textwrap import wrap
 from FiatProtocol import *
 
@@ -97,10 +97,10 @@ class TextMessage:
 
         return can1, can2
 
-    def encode_music(self, track, artist, album=None):
+    def encode_music(self, track, artist, folder=None):
         bitstring = ""
-        if album:
-            bitstring += self.encode_string(album)
+        if folder:
+            bitstring += self.encode_string(folder)
         else:
             bitstring += self.string_end
         bitstring += self.field_separator
@@ -181,8 +181,8 @@ class TextMessage:
         time.sleep(0.01)
         bus.send(messages[1])
 
-    def send_music(self, bus, track, artist, album=None):
-        messages = self.encode_music(track, artist, album)
+    def send_music(self, bus, track, artist, folder=None):
+        messages = self.encode_music(track, artist, folder)
         for message in messages:
             bus.send(message)
             time.sleep(0.01)
