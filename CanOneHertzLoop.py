@@ -12,10 +12,12 @@ class CanOneHertzLoop(threading.Thread):
     track_position = 0
     bm_ch_playing = None
     bm_ch_playing_locked = None
+    bm_ch_phone_locked = None
     bm_ch_muted = None
     bm_channel = None
     bm_is_playing = False
     menu_opened = False
+    phone_calling = False
 
     def __init__(self, bus):
         super().__init__()
@@ -23,6 +25,7 @@ class CanOneHertzLoop(threading.Thread):
 
         self.bm_ch_playing = Message(arbitration_id=CANID_BM_AUDIO_CHANNEL, data=bytearray(MASK_AUDIOCH_MEDIAPLAYER.bytes))
         self.bm_ch_playing_locked = Message(arbitration_id=CANID_BM_AUDIO_CHANNEL, data=bytearray((MASK_AUDIOCH_MEDIAPLAYER | MASK_AUDIOCH_LOCKED).bytes))
+        self.bm_ch_phone_locked = Message(arbitration_id=CANID_BM_AUDIO_CHANNEL, data=bytearray((MASK_AUDIOCH_PHONE | MASK_AUDIOCH_LOCKED).bytes))
         self.bm_ch_muted = Message(arbitration_id=CANID_BM_AUDIO_CHANNEL, data=bytearray(MASK_AUDIOCH_MUTED.bytes))
         self.bm_channel = self.bm_ch_playing
 
@@ -54,10 +57,7 @@ class CanOneHertzLoop(threading.Thread):
 
     def on_bm_playing(self, is_playing):
         self.bm_is_playing = is_playing
-        if self.menu_opened:
-            self.bm_channel = self.bm_ch_playing_locked
-        else:
-            self.bm_channel = self.bm_ch_playing
+        self.select_audio_channel()
 
     def on_track_position(self, seconds):
         print("Received track position: {}".format(seconds))
@@ -81,7 +81,21 @@ class CanOneHertzLoop(threading.Thread):
         else:
             self.menu_opened = True
 
-        if self.menu_opened:
-            self.bm_channel = self.bm_ch_playing_locked
+        self.select_audio_channel()
+
+    def on_phone(self, number):
+        if number is None:
+            self.phone_calling = False
         else:
-            self.bm_channel = self.bm_ch_playing
+            self.phone_calling = True
+
+        self.select_audio_channel()
+
+    def select_audio_channel(self):
+        if self.phone_calling:
+            self.bm_channel = self.bm_ch_phone_locked
+        else:
+            if self.menu_opened:
+                self.bm_channel = self.bm_ch_playing_locked
+            else:
+                self.bm_channel = self.bm_ch_playing

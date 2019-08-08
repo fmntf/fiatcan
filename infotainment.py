@@ -5,6 +5,7 @@ from BluetoothPlayer import BluetoothPlayer
 from BodyComputerManager import BodyComputerManager
 from CanOneHertzLoop import CanOneHertzLoop
 from Menu import Menu
+from PhoneManager import PhoneManager
 
 
 can_interface = 'vcan0' if os.uname()[4] == 'x86_64' else 'can0'
@@ -12,6 +13,7 @@ bus = can.ThreadSafeBus(interface="socketcan", channel=can_interface, bitrate=50
 
 menu = Menu()
 player = BluetoothPlayer()
+phone = PhoneManager()
 
 body_manager = BodyComputerManager(bus)
 body_manager.start()
@@ -30,10 +32,11 @@ menu.on_event('instpanel_display', onehz_loop.instpanel_display)
 menu.on_event('shutdown',          onehz_loop.on_shutdown)
 menu.on_event('remote',            player.on_button)
 
-
 player.on_event('track',    body_manager.radiounit_display)
 player.on_event('position', onehz_loop.on_track_position)
 player.on_event('playing',  onehz_loop.on_bm_playing)
+
+phone.on_event('call', onehz_loop.on_phone)
 
 print("Entering main loop")
 while True:
