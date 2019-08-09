@@ -4,6 +4,7 @@ import threading
 import time
 from can import Message
 from FiatProtocol import *
+from SteeringWheelButtons import SteeringWheelButtons
 from TextMessage import TextMessage
 
 
@@ -12,18 +13,17 @@ class BodyComputerManager(threading.Thread):
     should_run = True
     listeners = {}
     tm = TextMessage()
-    button_debouncers = {}
+    buttons = None
 
     def __init__(self, bus):
         super().__init__()
         self.bus = bus
+        self.buttons = SteeringWheelButtons()
 
     def run(self):
         br = can.BufferedReader()
         notifier = can.Notifier(self.bus, [br])
 
-        body_operational = True
-        bm_operational = True
         bm_playing = False
         date_sync = False
 
@@ -36,40 +36,26 @@ class BodyComputerManager(threading.Thread):
 
                 if message.arbitration_id == CANID_BODY_BUTTONS:  # buttons
                     if payload & MASK_BUTTON_VOLUME_UP == MASK_BUTTON_VOLUME_UP:
-                        self.debounce_button('vol+')
+                        self.buttons.debounce('vol+')
                     if payload & MASK_BUTTON_VOLUME_DN == MASK_BUTTON_VOLUME_DN:
-                        self.debounce_button('vol-')
+                        self.buttons.debounce('vol-')
                     if payload & MASK_BUTTON_WINDOWS == MASK_BUTTON_WINDOWS:
-                        self.debounce_button('win')
+                        self.buttons.debounce('win')
                     if payload & MASK_BUTTON_MUTE == MASK_BUTTON_MUTE:
-                        self.debounce_button('mute')
+                        self.buttons.debounce('mute')
                     if payload & MASK_BUTTON_UP == MASK_BUTTON_UP:
-                        self.debounce_button('up')
+                        self.buttons.debounce('up')
                     if payload & MASK_BUTTON_DOWN == MASK_BUTTON_DOWN:
-                        self.debounce_button('down')
+                        self.buttons.debounce('down')
                     if payload & MASK_BUTTON_MENU == MASK_BUTTON_MENU:
-                        self.debounce_button('menu')
+                        self.buttons.debounce('menu')
                     if payload & MASK_BUTTON_SOURCE == MASK_BUTTON_SOURCE:
-                        self.debounce_button('src')
+                        self.buttons.debounce('src')
 
                 elif message.arbitration_id == CANID_BODY_STATUS:
-                    if bm_operational:
-                        sys_status = payload[0:16]
-                    else:
-                        sys_status = ba(hex='0x000A')
-
+                    sys_status = payload[0:16]
                     #print("Body computer asked for status, answering {}...".format(sys_status))
                     self.bus.send(Message(arbitration_id=CANID_BM_STATUS, data=bytearray(sys_status.bytes)))
-                    if sys_status & MESSAGE_STATUS_WORKING == MESSAGE_STATUS_WORKING:
-                        if not body_operational:
-                            body_operational = True
-                            self.fire_event('body_state_change', body_operational)
-                    else:
-                        if body_operational:
-                            body_operational = False
-                            self.fire_event('body_state_change', body_operational)
-                        bm_operational = False
-                        self.fire_event('bm_state_change', bm_operational)
 
                 elif message.arbitration_id == CANID_4003_PROXI:
                     print("Answering PROXI request")
@@ -96,25 +82,10 @@ class BodyComputerManager(threading.Thread):
 
         notifier.stop()
 
-    def prepare_shutdown(self):
+    def shutdown(self):
         self.should_run = False
 
-    def instpanel_display(self, message=None, is_menu=False):
-        if message is None:
-            self.tm.clear_instpanel(self.bus)
-        else:
-            self.tm.send_instpanel(self.bus, message, is_menu)
 
-    def radiounit_display(self, title, artist):
-        self.tm.send_music(self.bus, title, artist)
-
-    def debounce_button(self, button):
-        if button in self.button_debouncers:
-            if time.time() - self.button_debouncers[button] < 0.3:
-                return
-
-        self.button_debouncers[button] = time.time()
-        self.fire_event('button', button)
 
     def fire_event(self, event, *args):
         if event not in self.listeners:

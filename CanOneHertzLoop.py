@@ -7,8 +7,6 @@ from FiatProtocol import *
 class CanOneHertzLoop(threading.Thread):
 
     should_run = True
-    body_operational = True
-    bm_operational = True
     track_position = 0
     bm_ch_playing = None
     bm_ch_playing_locked = None
@@ -16,7 +14,7 @@ class CanOneHertzLoop(threading.Thread):
     bm_ch_muted = None
     bm_channel = None
     bm_is_playing = False
-    instpanel_has_message = False
+    instpanel_menu_opened = False
     phone_calling = False
 
     def __init__(self, bus):
@@ -35,23 +33,19 @@ class CanOneHertzLoop(threading.Thread):
 
         start_time = time.time()
         while self.should_run:
-            if self.body_operational and self.bm_operational:
-                self.bus.send(self.bm_channel)
-                time.sleep(0.2)
+            self.bus.send(self.bm_channel)
+            time.sleep(0.2)
 
-                seconds = "0x{:02d}{:02d}487800000000".format(self.track_position // 60,self.track_position % 60)
-                self.bus.send(Message(arbitration_id=CANID_BM_TRACK_TIME, data=bytearray(ba(hex=seconds).bytes)))
-                time.sleep(0.05)
+            seconds = "0x{:02d}{:02d}487800000000".format(self.track_position // 60,self.track_position % 60)
+            self.bus.send(Message(arbitration_id=CANID_BM_TRACK_TIME, data=bytearray(ba(hex=seconds).bytes)))
+            time.sleep(0.05)
 
-                self.bus.send(watchdog1)
-                time.sleep(0.02)
-                self.bus.send(watchdog2)
+            self.bus.send(watchdog1)
+            time.sleep(0.02)
+            self.bus.send(watchdog2)
 
-                if self.bm_is_playing:
-                    self.track_position += 1
-
-            else:
-                print("1Hz thread stopped: {}, {}".format(self.body_operational, self.bm_operational))
+            if self.bm_is_playing:
+                self.track_position += 1
 
             time.sleep(1.0 - ((time.time() - start_time) % 1.0))
 
@@ -59,27 +53,18 @@ class CanOneHertzLoop(threading.Thread):
         self.bm_is_playing = is_playing
         self.select_audio_channel()
 
-    def on_track_position(self, seconds):
+    def on_bm_position(self, seconds):
         print("Received track position: {}".format(seconds))
         self.track_position = seconds
 
-    def prepare_shutdown(self):
+    def shutdown(self):
         self.should_run = False
 
-    def on_body_state_change(self, body_operational):
-        self.body_operational = body_operational
-
-    def on_bm_state_change(self, bm_operational):
-        self.bm_operational = bm_operational
-
-    def on_shutdown(self):
-        self.bm_operational = False
-
-    def instpanel_display(self, message=None, is_menu=False):
+    def on_menu(self, message=None, is_menu=False):
         if message is None:
-            self.instpanel_has_message = False
+            self.instpanel_menu_opened = False
         else:
-            self.instpanel_has_message = True
+            self.instpanel_menu_opened = True
 
         self.select_audio_channel()
 
@@ -95,7 +80,7 @@ class CanOneHertzLoop(threading.Thread):
         if self.phone_calling:
             self.bm_channel = self.bm_ch_phone_locked
         else:
-            if self.instpanel_has_message:
+            if self.instpanel_menu_opened:
                 self.bm_channel = self.bm_ch_playing_locked
             else:
                 self.bm_channel = self.bm_ch_playing

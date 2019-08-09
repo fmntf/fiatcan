@@ -5,6 +5,7 @@ import threading
 import time
 from concurrent.futures.thread import ThreadPoolExecutor
 from gi.repository import GLib
+from TextMessage import TextMessage
 
 
 class BluetoothPlayer:
@@ -15,6 +16,7 @@ class BluetoothPlayer:
     connect_thread = None
     should_run = True
     executor = None
+    tm = TextMessage()
 
     bt_connected = False
     media_connected = False
@@ -52,17 +54,17 @@ class BluetoothPlayer:
         if new_status == "playing":
             self.possible_pause = False
             self.music_playing = True
-            print("Music is playing")
+            print("[player] music is playing")
             self.fire_event('playing', self.music_playing)
         else:
             self.possible_pause = True
             time.sleep(0.5)
             if self.possible_pause:
                 self.music_playing = False
-                print("Music is paused")
+                print("[player] music is paused")
                 self.fire_event('playing', self.music_playing)
 
-    def prepare_shutdown(self):
+    def shutdown(self):
         self.should_run = False
         self.mainloop.quit()
 
@@ -70,7 +72,7 @@ class BluetoothPlayer:
         while self.should_run:
             time.sleep(10)
             if not self.bt_connected:
-                print("Trying to connect devices...")
+                print("[player] connecting bluetooth...")
                 obj = self.bus.get_object("org.bluez", "/")
                 interface = dbus.Interface(obj, "org.freedesktop.DBus.ObjectManager")
                 regexp = re.compile("(^/org/bluez/hci[0-9]/dev_[A-Z0-9_]+$)")
@@ -81,11 +83,12 @@ class BluetoothPlayer:
                         hciobj = self.bus.get_object("org.bluez", matches[0])
                         hciiface = dbus.Interface(hciobj, "org.bluez.Device1")
                         conn = hciiface.get_dbus_method("Connect")
-                        print("Connecting to {}".format(matches[0]))
+                        print("[player] connecting to {}...".format(matches[0]))
                         try:
                             conn()
                             break
                         except:
+                            print("[player] connection to {} failed".format(matches[0]))
                             pass
             time.sleep(50)
 
@@ -93,15 +96,15 @@ class BluetoothPlayer:
         if interface == "org.bluez.Device1":
             if "Connected" in changed:
                 self.bt_connected = changed["Connected"]
-                print("Bluetooth connected: {}".format(self.bt_connected))
+                print("[player] connection state: {}".format(self.bt_connected))
 
         if interface == "org.bluez.MediaControl1":
             if "Player" in changed:
                 self.media_player = changed["Player"]
             if "Connected" in changed:
                 self.media_connected = changed["Connected"]
-                if self.media_connected:
-                    print("Media is connected, " + self.media_player)
+                if self.media_connected and self.media_player:
+                    print("[player] bluetooth media is connected: " + self.media_player)
                     obj = self.bus.get_object("org.bluez", self.media_player)
                     media_interface = dbus.Interface(obj, "org.bluez.MediaPlayer1")
                     self.pause_music = media_interface.get_dbus_method("Pause")
@@ -114,8 +117,7 @@ class BluetoothPlayer:
         elif interface == "org.bluez.MediaPlayer1":
             if "Track" in changed:
                 track = changed["Track"]
-                self.fire_event('track', track["Title"], track["Artist"])
-                print("Track: {} - {}".format(track["Title"], track["Artist"]))
+                self.executor.submit(self.notify_track, track["Title"], track["Artist"])
 
             if "Status" in changed:
                 self.executor.submit(self.evaluate_play_status, changed["Status"])
@@ -123,6 +125,15 @@ class BluetoothPlayer:
             if "Position" in changed:
                 player_position = int(changed["Position"]/1000)
                 self.fire_event('position', player_position)
+
+    def notify_track(self, title, artist):
+        print("[player] track: {} - {}".format(title, artist))
+        self.tm.send_music(self.bus, title, artist)
+        # sometimes the radio unit does not display the track
+        # maybe it must be sent in sync with something else
+        # however, sending the track again after some time "fixes" the issue
+        time.sleep(1)
+        self.tm.send_music(self.bus, title, artist)
 
     def on_bm_playing(self, is_playing):
         print("[player] on_bm_playing {}".format(is_playing))
@@ -136,16 +147,18 @@ class BluetoothPlayer:
 
     def on_button(self, key):
         print("[player] on_button "+key)
-        if key == 'next':
-            self.next_music()
-        elif key == 'prev':
-            self.prev_music()
-        elif key == 'mute':
-            if self.media_connected:
+        if self.media_connected:
+            if key == 'up':
+                self.next_music()
+            elif key == 'down':
+                self.prev_music()
+            elif key == 'mute':
                 if not self.music_playing:
                     self.play_music()
                 else:
                     self.pause_music()
+        else:
+            print("[player] media not connected, ignoring key {}".format(key))
 
     def fire_event(self, event, *args):
         if event not in self.listeners:
