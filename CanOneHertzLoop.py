@@ -16,7 +16,7 @@ class CanOneHertzLoop(threading.Thread):
     bm_ch_muted = None
     bm_channel = None
     bm_is_playing = False
-    menu_opened = False
+    instpanel_has_message = False
     phone_calling = False
 
     def __init__(self, bus):
@@ -27,7 +27,7 @@ class CanOneHertzLoop(threading.Thread):
         self.bm_ch_playing_locked = Message(arbitration_id=CANID_BM_AUDIO_CHANNEL, data=bytearray((MASK_AUDIOCH_MEDIAPLAYER | MASK_AUDIOCH_LOCKED).bytes))
         self.bm_ch_phone_locked = Message(arbitration_id=CANID_BM_AUDIO_CHANNEL, data=bytearray((MASK_AUDIOCH_PHONE | MASK_AUDIOCH_LOCKED).bytes))
         self.bm_ch_muted = Message(arbitration_id=CANID_BM_AUDIO_CHANNEL, data=bytearray(MASK_AUDIOCH_MUTED.bytes))
-        self.bm_channel = self.bm_ch_playing
+        self.bm_channel = self.bm_ch_muted
 
     def run(self):
         watchdog1 = Message(arbitration_id=CANID_BM_WATCHDOG, data=bytearray(MESSAGE_BM_WATCHDOG1.bytes))
@@ -77,9 +77,9 @@ class CanOneHertzLoop(threading.Thread):
 
     def instpanel_display(self, message=None, is_menu=False):
         if message is None:
-            self.menu_opened = False
+            self.instpanel_has_message = False
         else:
-            self.menu_opened = True
+            self.instpanel_has_message = True
 
         self.select_audio_channel()
 
@@ -95,7 +95,7 @@ class CanOneHertzLoop(threading.Thread):
         if self.phone_calling:
             self.bm_channel = self.bm_ch_phone_locked
         else:
-            if self.menu_opened:
+            if self.instpanel_has_message:
                 self.bm_channel = self.bm_ch_playing_locked
             else:
                 self.bm_channel = self.bm_ch_playing
