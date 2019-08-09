@@ -1,3 +1,4 @@
+import os
 import time
 import subprocess
 from TextMessage import TextMessage
@@ -28,6 +29,7 @@ class Menu:
     menu = None
     listeners = {}
     phone_calling = False
+    candumping = None
 
     def __init__(self, bus):
         def dismiss_menu():
@@ -43,10 +45,23 @@ class Menu:
             result = subprocess.run(['uname', '-r'], stdout=subprocess.PIPE)
             kernel_version = result.stdout.decode('UTF8').strip()
             self.instpanel_display(kernel_version)
-            self.active_item = None
+
+        def candump_callback():
+            if self.candumping is None:
+                if os.system("sudo datamount") != 0:
+                    self.instpanel_display("mount error")
+                    return
+                self.candumping = subprocess.Popen(['candump', '-l', 'can0'], cwd='/data/traces')
+                self.instpanel_display("dump started")
+            else:
+                self.candumping.kill()
+                self.candumping = None
+                if os.system("sudo dataumount") != 0:
+                    self.instpanel_display("umount error")
+                self.instpanel_display("dump stopped")
 
         def reboot_callback():
-            temp_show("Reboot...", 2)
+            temp_show("Rebooting...", 2)
             subprocess.run(['sudo', 'reboot'])
 
         def submenu_callback():
@@ -56,10 +71,11 @@ class Menu:
 
         self.bus = bus
         self.menu = [
-            MenuItem('KERNEL', info_callback),
-            MenuItem('REBOOT', submenu_callback, [
-                MenuItem('CONFERMA? SI', reboot_callback),
-                MenuItem('CONFERMA? NO', dismiss_menu),
+            MenuItem('Kernel', info_callback),
+            MenuItem('Candump', candump_callback),
+            MenuItem('Reboot', submenu_callback, [
+                MenuItem('Confirm? Yes', reboot_callback),
+                MenuItem('Confirm? No', dismiss_menu),
             ]),
         ]
 
