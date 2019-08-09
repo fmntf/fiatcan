@@ -34,7 +34,7 @@ int main(int argc, char **argv)
 
 	fd_set rdfs;
 	int s;
-	int count = 2000; // candump -n
+	int count = 500; // candump -n
 	int ret;
 	char *devname;
 	struct sockaddr_can addr;
