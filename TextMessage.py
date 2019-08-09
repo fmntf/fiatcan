@@ -124,21 +124,30 @@ class TextMessage:
 
         return messages
 
-    def encode_string(self, string, maxlen=14):
-        string = string.upper()
+    def normalize_string(self, string, maxlen=14):
+        string = string.strip().upper()
         if len(string) > maxlen:
             string = string[:maxlen]
 
         chunks = []
         for char in string:
             if char in self.char_map:
-                chunks.append(self.char_map[char])
+                chunks.append(char)
             else:
                 decoded = unidecode.unidecode(char)
                 if len(decoded) == 1 and decoded in self.char_map:
-                    chunks.append(self.char_map[decoded])
+                    chunks.append(decoded)
                 else:
-                    chunks.append(self.char_map['?'])
+                    chunks.append(' ')
+
+        return ''.join(chunks).replace('  ', ' ')
+
+    def encode_string(self, string, maxlen=14):
+        string = self.normalize_string(string, maxlen)
+
+        chunks = []
+        for char in string:
+            chunks.append(self.char_map[char])
 
         return ''.join(chunks)
 
