@@ -1,18 +1,14 @@
 import can
 import os
 import threading
-import time
-from can import Message
 from FiatProtocol import *
 from SteeringWheelButtons import SteeringWheelButtons
-from TextMessage import TextMessage
 
 
 class BodyComputerManager(threading.Thread):
 
     should_run = True
     listeners = {}
-    tm = TextMessage()
     buttons = None
 
     def __init__(self, bus):
@@ -24,7 +20,7 @@ class BodyComputerManager(threading.Thread):
         br = can.BufferedReader()
         notifier = can.Notifier(self.bus, [br])
 
-        bm_playing = False
+        audio_channel = None
         date_sync = False
 
         while self.should_run:
@@ -71,14 +67,13 @@ class BodyComputerManager(threading.Thread):
                         date_sync = True
 
                 elif message.arbitration_id == CANID_RADIO_AUDIOCH:
-                    if payload & MASK_RADIO_AUDIOCH_MPMUTE_O == MASK_RADIO_AUDIOCH_MPMUTE_O:
-                        if not bm_playing:
-                            bm_playing = True
-                            self.fire_event('bm_playing', bm_playing)
-                    if payload & MASK_RADIO_AUDIOCH_MPMUTE_I == MASK_RADIO_AUDIOCH_MPMUTE_I:
-                        if bm_playing:
-                            bm_playing = False
-                            self.fire_event('bm_playing', bm_playing)
+                    prev_audio_channel = audio_channel
+                    if payload & MASK_RADIO_AUDIOCH_MPPLAYING == MASK_RADIO_AUDIOCH_MPPLAYING:
+                        audio_channel = 'bm'
+                    else:
+                        audio_channel = 'fm'
+                    if prev_audio_channel != audio_channel:
+                        self.fire_event('audio_channel', audio_channel)
 
         notifier.stop()
 

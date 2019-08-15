@@ -78,7 +78,10 @@ class TextMessage:
     instpanel_text_prefix1 = "0001000000010110"
     instpanel_text_prefix2 = "0001000100010110"
 
-    def __init__(self):
+    bus = None
+
+    def __init__(self, bus):
+        self.bus = bus
         for key, value in self.char_map.items():
             self.bitstrings_map[value] = key
 
@@ -125,7 +128,7 @@ class TextMessage:
         return messages
 
     def normalize_string(self, string, maxlen=14):
-        string = string.strip().upper()
+        string = string.rstrip().upper()
         if len(string) > maxlen:
             string = string[:maxlen]
 
@@ -183,21 +186,21 @@ class TextMessage:
     def bitstring_to_bytes(self, s):
         return int(s, 2).to_bytes(len(s) // 8, byteorder='big')
 
-    def send_instpanel(self, bus, string, is_menu):
+    def send_instpanel(self, string, is_menu=False):
         print("Showing '{}' on instrument panel".format(string))
         messages = self.encode_instpanel(string, is_menu)
-        bus.send(messages[0])
+        self.bus.send(messages[0])
         time.sleep(0.01)
-        bus.send(messages[1])
+        self.bus.send(messages[1])
 
-    def send_music(self, bus, track, artist, folder=None):
+    def send_music(self, track, artist, folder=None):
         messages = self.encode_music(track, artist, folder)
         for message in messages:
-            bus.send(message)
+            self.bus.send(message)
             time.sleep(0.01)
 
-    def clear_instpanel(self, bus):
+    def clear_instpanel(self):
         print("Clearing instrument panel")
-        bus.send(
+        self.bus.send(
             Message(arbitration_id=CANID_BM_TEXT_MESSAGE, data=bytearray(MESSAGE_INSTPANEL_CLEAR.bytes))
         )

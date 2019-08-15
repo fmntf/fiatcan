@@ -5,7 +5,6 @@ import threading
 import time
 from concurrent.futures.thread import ThreadPoolExecutor
 from gi.repository import GLib
-from TextMessage import TextMessage
 
 
 class BluetoothPlayer:
@@ -16,7 +15,7 @@ class BluetoothPlayer:
     connect_thread = None
     should_run = True
     executor = None
-    tm = TextMessage()
+    tm = None
 
     bt_connected = False
     media_connected = False
@@ -29,7 +28,8 @@ class BluetoothPlayer:
     next_music = None
     prev_music = None
 
-    def __init__(self):
+    def __init__(self, tm):
+        self.tm = tm
         dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
         self.mainloop = GLib.MainLoop()
         self.bus = dbus.SystemBus()
@@ -40,7 +40,7 @@ class BluetoothPlayer:
                                      signal_name="PropertiesChanged",
                                      path_keyword="path")
 
-        self.executor = ThreadPoolExecutor(max_workers=4)
+        self.executor = ThreadPoolExecutor(max_workers=1)
         thread = threading.Thread(target=self.start)
         thread.start()
 
@@ -70,7 +70,6 @@ class BluetoothPlayer:
 
     def connect_device(self):
         while self.should_run:
-            time.sleep(10)
             if not self.bt_connected:
                 print("[player] connecting bluetooth...")
                 obj = self.bus.get_object("org.bluez", "/")
@@ -90,7 +89,7 @@ class BluetoothPlayer:
                         except:
                             print("[player] connection to {} failed".format(matches[0]))
                             pass
-            time.sleep(50)
+            time.sleep(10)
 
     def properties_changed(self, interface, changed, invalidated, path):
         if interface == "org.bluez.Device1":
@@ -128,21 +127,21 @@ class BluetoothPlayer:
 
     def notify_track(self, title, artist):
         print("[player] track: {} - {}".format(title, artist))
-        self.tm.send_music(self.bus, title, artist)
+        self.tm.send_music(title, artist)
         # sometimes the radio unit does not display the track
         # maybe it must be sent in sync with something else
         # however, sending the track again after some time "fixes" the issue
-        time.sleep(1)
-        self.tm.send_music(self.bus, title, artist)
+        time.sleep(0.5)
+        self.tm.send_music(title, artist)
 
-    def on_bm_playing(self, is_playing):
-        print("[player] on_bm_playing {}".format(is_playing))
+    def on_audio_channel(self, channel):
+        print("[player] selected audio channel {}".format(channel))
         if self.media_connected:
-            if is_playing:
-                print("Player: play")
+            if channel == 'bm':
+                print("[player]: playing bt music")
                 self.play_music()
             else:
-                print("Player: stop")
+                print("[player]: stopping bt music")
                 self.pause_music()
 
     def on_button(self, key):

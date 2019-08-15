@@ -9,9 +9,6 @@ class SteeringWheelButtons:
     phone_calling = False
     menu_opened = False
 
-    def __init__(self):
-        pass
-
     def debounce(self, button):
         if button in self.debouncers:
             if time.time() - self.debouncers[button] < 0.3:
@@ -42,11 +39,8 @@ class SteeringWheelButtons:
         else:
             self.phone_calling = True
 
-    def on_menu(self, message=None, is_menu=False):
-        if message is None:
-            self.menu_opened = False
-        else:
-            self.menu_opened = True
+    def on_menu_opened(self, is_open):
+        self.menu_opened = is_open
 
     def fire_event(self, event, *args):
         if event not in self.listeners:

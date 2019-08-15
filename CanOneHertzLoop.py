@@ -13,7 +13,7 @@ class CanOneHertzLoop(threading.Thread):
     bm_ch_phone_locked = None
     bm_ch_muted = None
     bm_channel = None
-    bm_is_playing = False
+    bt_is_playing = False
     instpanel_menu_opened = False
     phone_calling = False
 
@@ -44,28 +44,24 @@ class CanOneHertzLoop(threading.Thread):
             time.sleep(0.02)
             self.bus.send(watchdog2)
 
-            if self.bm_is_playing:
+            if self.bt_is_playing:
                 self.track_position += 1
 
             time.sleep(1.0 - ((time.time() - start_time) % 1.0))
 
-    def on_bm_playing(self, is_playing):
-        self.bm_is_playing = is_playing
+    def on_bt_playing(self, is_playing):
+        self.bt_is_playing = is_playing
         self.select_audio_channel()
 
-    def on_bm_position(self, seconds):
+    def on_bt_position(self, seconds):
         print("Received track position: {}".format(seconds))
         self.track_position = seconds
 
     def shutdown(self):
         self.should_run = False
 
-    def on_menu(self, message=None, is_menu=False):
-        if message is None:
-            self.instpanel_menu_opened = False
-        else:
-            self.instpanel_menu_opened = True
-
+    def on_menu_opened(self, is_open):
+        self.instpanel_menu_opened = is_open
         self.select_audio_channel()
 
     def on_phone(self, number):

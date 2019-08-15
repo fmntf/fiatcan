@@ -1,7 +1,6 @@
 import os
 import time
 import subprocess
-from TextMessage import TextMessage
 
 
 class MenuItem:
@@ -23,15 +22,13 @@ class MenuItem:
 
 class Menu:
 
-    bus = None
-    tm = TextMessage()
     active_items = []
     menu = None
     listeners = {}
     phone_calling = False
     candumping = None
 
-    def __init__(self, bus):
+    def __init__(self):
         def dismiss_menu():
             self.active_items = []
             self.instpanel_display(None)
@@ -48,8 +45,9 @@ class Menu:
 
         def candump_callback():
             if self.candumping is None:
-                if os.system("sudo datamount") != 0:
-                    self.instpanel_display("mount error")
+                ret = os.system("sudo datamount")
+                if ret != 0:
+                    self.instpanel_display("mount err {}".format(ret))
                     return
                 self.candumping = subprocess.Popen(['candump', '-l', 'can0'], cwd='/data/traces')
                 self.instpanel_display("dump started")
@@ -62,14 +60,13 @@ class Menu:
 
         def reboot_callback():
             temp_show("Rebooting...", 2)
-            subprocess.run(['sudo', 'reboot'])
+            subprocess.run(['sudo', 'systemctl', 'restart', 'infotainment'])
 
         def submenu_callback():
             self.active_items.append(0)
             item = self.get_active_item()
             self.instpanel_display(item.string, True)
 
-        self.bus = bus
         self.menu = [
             MenuItem('Kernel', info_callback),
             MenuItem('Candump', candump_callback),
@@ -91,7 +88,7 @@ class Menu:
                 item = self.get_active_item()
                 item.click()
 
-        elif key == 'down':
+        elif key == 'up':
             if len(self.active_items) > 0:
                 menu = self.get_active_menu()
                 idx = self.active_items[-1]
@@ -100,7 +97,7 @@ class Menu:
                 item = self.get_active_item()
                 self.instpanel_display(item.string, True)
 
-        elif key == 'up':
+        elif key == 'down':
             if len(self.active_items) > 0:
                 menu = self.get_active_menu()
                 idx = self.active_items[-1]
@@ -132,13 +129,9 @@ class Menu:
 
         return menu
 
-    def instpanel_display(self, message=None, is_menu=False):
+    def instpanel_display(self, message=None, show_arrows=False):
         print("[menu] {}".format(message))
-        self.fire_event('menu', message)
-        if message is None:
-            self.tm.clear_instpanel(self.bus)
-        else:
-            self.tm.send_instpanel(self.bus, message, is_menu)
+        self.fire_event('item', message, show_arrows)
 
     def on_phone(self, number):
         if number is None:
