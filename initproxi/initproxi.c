@@ -34,7 +34,6 @@ int main(int argc, char **argv)
 
 	fd_set rdfs;
 	int s;
-	int count = 500; // candump -n
 	int ret;
 	char *devname;
 	struct sockaddr_can addr;
@@ -45,12 +44,6 @@ int main(int argc, char **argv)
 	struct canfd_frame frame;
 	int nbytes, maxdlen;
 	struct ifreq ifr;
-	struct timeval timeout, timeout_config = { 0, 0 }, *timeout_current = NULL;
-
-    timeout_config.tv_usec = 3000; // candump -T
-    timeout_config.tv_sec = timeout_config.tv_usec / 1000;
-    timeout_config.tv_usec = (timeout_config.tv_usec % 1000) * 1000;
-    timeout_current = &timeout;
 
     if (argc != 2) {
         fprintf(stderr, "Usage: %s <device>\n", argv[0]);
@@ -92,17 +85,12 @@ int main(int argc, char **argv)
 	msg.msg_iovlen = 1;
 	msg.msg_control = &ctrlmsg;
 
+	struct canfd_frame out;
+	int booted = 0;
+
 	while (running) {
 		FD_ZERO(&rdfs);
         FD_SET(s, &rdfs);
-
-		if (timeout_current)
-			*timeout_current = timeout_config;
-
-		if ((ret = select(s+1, &rdfs, NULL, NULL, timeout_current)) <= 0) {
-			running = 0;
-			continue;
-		}
 
         if (FD_ISSET(s, &rdfs)) {
             /* these settings may be modified by recvmsg() */
@@ -131,10 +119,6 @@ int main(int argc, char **argv)
                 return 1;
             }
 
-            if (count && (--count == 0))
-                running = 0;
-
-
             for (cmsg = CMSG_FIRSTHDR(&msg);
                  cmsg && (cmsg->cmsg_level == SOL_SOCKET);
                  cmsg = CMSG_NXTHDR(&msg,cmsg)) {
@@ -152,8 +136,18 @@ int main(int argc, char **argv)
                 last_dropcnt = dropcnt;
             }
 
+            if (booted == 0) {
+                int required_mtu = parse_canframe("0E094021#000E", &out);
+                if (write(s, &out, required_mtu) != required_mtu) {
+                    perror("write");
+                    return 1;
+                } else {
+                    printf("Boot status sent!\n");
+                }
+                booted = 1;
+            }
+
             if ((frame.can_id & CAN_EFF_MASK) == 0x1E114003) {
-                struct canfd_frame out;
                 int required_mtu = parse_canframe("1E114021#362630045880", &out);
                 if (write(s, &out, required_mtu) != required_mtu) {
                     perror("write");
@@ -167,7 +161,6 @@ int main(int argc, char **argv)
             }
 
             if ((frame.can_id & CAN_EFF_MASK) == 0x0E094003) {
-                struct canfd_frame out;
                 int required_mtu = parse_canframe("0E094021#000E", &out);
                 if (write(s, &out, required_mtu) != required_mtu) {
                     perror("write");
@@ -175,9 +168,6 @@ int main(int argc, char **argv)
                 } else {
                     printf("Status correctly answered!\n");
                 }
-
-                fprint_long_canframe(stdout, &frame, NULL, 0, maxdlen);
-                printf("\n");
             }
         }
 

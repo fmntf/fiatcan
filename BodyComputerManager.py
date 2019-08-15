@@ -48,15 +48,6 @@ class BodyComputerManager(threading.Thread):
                     if payload & MASK_BUTTON_SOURCE == MASK_BUTTON_SOURCE:
                         self.buttons.debounce('src')
 
-                elif message.arbitration_id == CANID_BODY_STATUS:
-                    sys_status = payload[0:16]
-                    #print("Body computer asked for status, answering {}...".format(sys_status))
-                    self.bus.send(Message(arbitration_id=CANID_BM_STATUS, data=bytearray(sys_status.bytes)))
-
-                elif message.arbitration_id == CANID_4003_PROXI:
-                    print("Answering PROXI request")
-                    self.bus.send(Message(arbitration_id=CANID_BM_PROXI, data=bytearray(payload.bytes)))
-
                 elif message.arbitration_id == CANID_4003_CLOCK:
                     if not date_sync:
                         payload_str = payload.__str__()
