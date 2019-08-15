@@ -137,26 +137,29 @@ int main(int argc, char **argv)
             }
 
             if (booted == 0) {
-                int required_mtu = parse_canframe("0E094021#000E", &out);
+                int required_mtu = parse_canframe("0E094021#000A", &out);
                 if (write(s, &out, required_mtu) != required_mtu) {
                     perror("write");
                     return 1;
                 } else {
-                    printf("Boot status sent!\n");
+                    printf("[initproxi] boot status sent\n");
                 }
                 booted = 1;
             }
 
             if ((frame.can_id & CAN_EFF_MASK) == 0x1E114003) {
-                int required_mtu = parse_canframe("1E114021#362630045880", &out);
+                int required_mtu = parse_canframe("1E114021#000000000000", &out);
+                for (int w=0; w<frame.len; w++) {
+                    out.data[w] = frame.data[w];
+                }
                 if (write(s, &out, required_mtu) != required_mtu) {
                     perror("write");
                     return 1;
                 } else {
-                    printf("PROXI correctly answered!\n");
+                    printf("[initproxi] PROXI answered\n");
                 }
 
-                fprint_long_canframe(stdout, &frame, NULL, 0, maxdlen);
+                fprint_long_canframe(stdout, &out, NULL, 0, maxdlen);
                 printf("\n");
             }
 
@@ -165,8 +168,6 @@ int main(int argc, char **argv)
                 if (write(s, &out, required_mtu) != required_mtu) {
                     perror("write");
                     return 1;
-                } else {
-                    printf("Status correctly answered!\n");
                 }
             }
         }
