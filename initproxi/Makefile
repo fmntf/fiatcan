@@ -5,4 +5,4 @@ initproxi: initproxi.o lib.o
 	$(CC) -o initproxi initproxi.o lib.o
 
 clean:
-	rm *.o initproxi
+	rm -f *.o initproxi
