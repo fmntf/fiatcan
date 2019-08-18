@@ -1,0 +1,11 @@
+#!/usr/bin/make -f
+
+%:
+	dh ${@} --with=systemd
+
+override_dh_auto_clean:
+	dh_auto_clean
+	cd initproxi && make clean
+
+override_dh_auto_build:
+	cd initproxi && make

@@ -1,0 +1,7 @@
+#!/bin/bash
+set -e
+
+mount -o remount,rw /otgstorage
+rm -f /otgstorage/readwrite
+sync
+reboot

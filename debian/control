@@ -1,0 +1,20 @@
+Source: infotainment
+Section: misc
+Priority: extra
+Maintainer: Francesco Montefoschi <francesco.monte@gmail.com>
+Build-Depends:
+ debhelper (>= 9),
+ dh-systemd
+Standards-Version: 4.0.0
+Homepage: https://medium.com/@fmntf/
+
+Package: infotainment
+Architecture: any
+Depends:
+ ${misc:Depends},
+ ${shlibs:Depends},
+ python3,
+ python3-unidecode,
+ python3-wrapt,
+ haveged
+Description: Doblo Infotainment Service

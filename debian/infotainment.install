@@ -1,0 +1,12 @@
+*.py                        /opt/infotainment
+
+initproxi/initproxi         /sbin
+misc/caninit                /sbin
+misc/datamount              /sbin
+misc/dataumount             /sbin
+misc/rootfsro               /sbin
+misc/rootfsrw               /sbin
+
+misc/can0                   /etc/network/interfaces.d
+debian/audio.conf           /etc/bluetooth/
+debian/infotainment.pa      /etc/pulse/

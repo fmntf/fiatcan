@@ -1,0 +1,29 @@
+#!/bin/sh
+
+mount -t proc none /proc
+ip link set can0 type can bitrate 50000
+ip link set up can0
+/sbin/initproxi can0 &
+
+modprobe vfat
+mount /otgstorage
+if [ -f /otgstorage/readwrite ]; then
+    echo "Booting in Read/Write"
+    umount /otgstorage
+    exec /sbin/init
+else
+    echo "Booting in Read/Only"
+    umount /otgstorage
+    mount -t tmpfs tmpfs /media
+    mkdir /media/root-ro
+    mkdir /media/root-rw
+    mkdir /media/overlay
+    mkdir /media/work
+    umount /
+    mount -o ro /dev/mmcblk1p2 /media/root-ro
+    mount -t overlay -o lowerdir=/media/root-ro,upperdir=/media/root-rw,workdir=/media/work overlay /media/overlay
+    cd /media/overlay
+    mkdir old_root
+    pivot_root . old_root
+    exec chroot . sh -c 'exec /sbin/init'
+fi

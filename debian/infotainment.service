@@ -1,0 +1,13 @@
+[Unit]
+Description=Infotainment Service
+After=network.target
+After=dbus.service
+
+[Service]
+User=udooer
+Group=udooer
+WorkingDirectory=/opt/infotainment
+ExecStart=/usr/bin/python3 -u infotainment.py
+
+[Install]
+WantedBy=multi-user.target
