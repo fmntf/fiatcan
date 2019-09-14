@@ -14,7 +14,8 @@ class BluetoothPlayer:
     bus = None
     connect_thread = None
     should_run = True
-    executor = None
+    play_status_executor = None
+    player_executor = None
     tm = None
 
     bt_connected = False
@@ -22,6 +23,7 @@ class BluetoothPlayer:
     music_playing = False
     possible_pause = False
     media_player = None
+    now_playing = None
 
     pause_music = None
     play_music = None
@@ -40,12 +42,13 @@ class BluetoothPlayer:
                                      signal_name="PropertiesChanged",
                                      path_keyword="path")
 
-        self.executor = ThreadPoolExecutor(max_workers=1)
-        thread = threading.Thread(target=self.start)
-        thread.start()
+        self.play_status_executor = ThreadPoolExecutor(max_workers=1)
+        self.player_executor = ThreadPoolExecutor(max_workers=4)
+        dbus_thread = ExceptionAwareThread(target=self.start)
+        dbus_thread.start()
 
     def start(self):
-        self.connect_thread = threading.Thread(target=self.connect_device)
+        self.connect_thread = ExceptionAwareThread(target=self.connect_device)
         self.connect_thread.start()
 
         self.mainloop.run()
@@ -100,39 +103,52 @@ class BluetoothPlayer:
         if interface == "org.bluez.MediaControl1":
             if "Player" in changed:
                 self.media_player = changed["Player"]
+                print("[player] bluetooth media player: " + self.media_player)
+                self.connect_player()
             if "Connected" in changed:
                 self.media_connected = changed["Connected"]
-                if self.media_connected and self.media_player:
-                    print("[player] bluetooth media is connected: " + self.media_player)
-                    obj = self.bus.get_object("org.bluez", self.media_player)
-                    media_interface = dbus.Interface(obj, "org.bluez.MediaPlayer1")
-                    self.pause_music = media_interface.get_dbus_method("Pause")
-                    self.play_music = media_interface.get_dbus_method("Play")
-                    self.next_music = media_interface.get_dbus_method("Next")
-                    self.prev_music = media_interface.get_dbus_method("Previous")
-                    time.sleep(5)
-                    self.play_music()
+                if self.media_connected:
+                    print("[player] bluetooth media player connected")
+                    self.connect_player()
+                else:
+                    print("[player] bluetooth media player disconnected")
+                    self.evaluate_play_status("disconnected")
 
         elif interface == "org.bluez.MediaPlayer1":
             if "Track" in changed:
                 track = changed["Track"]
-                self.executor.submit(self.notify_track, track["Title"], track["Artist"])
+                print("[player] track: {} - {}".format(track["Title"], track["Artist"]))
+                self.now_playing = [track["Title"], track["Artist"]]
+                self.tm.send_music(track["Title"], track["Artist"])
+                self.player_executor.submit(self.resend_track)
 
             if "Status" in changed:
-                self.executor.submit(self.evaluate_play_status, changed["Status"])
+                self.play_status_executor.submit(self.evaluate_play_status, changed["Status"])
 
             if "Position" in changed:
                 player_position = int(changed["Position"]/1000)
                 self.fire_event('position', player_position)
 
-    def notify_track(self, title, artist):
-        print("[player] track: {} - {}".format(title, artist))
-        self.tm.send_music(title, artist)
-        # sometimes the radio unit does not display the track
-        # maybe it must be sent in sync with something else
-        # however, sending the track again after some time "fixes" the issue
-        time.sleep(0.5)
-        self.tm.send_music(title, artist)
+    def resend_track(self):
+        before = self.now_playing[1]
+        time.sleep(5)
+        if before == self.now_playing[1]:
+            # if the track changed during the sleep, do not reassert it
+            self.tm.send_music(self.now_playing[0], self.now_playing[1])
+
+    def play_on_connected(self):
+        time.sleep(5)
+        self.play_music()
+
+    def connect_player(self):
+        if self.media_connected and self.media_player:
+            obj = self.bus.get_object("org.bluez", self.media_player)
+            media_interface = dbus.Interface(obj, "org.bluez.MediaPlayer1")
+            self.pause_music = media_interface.get_dbus_method("Pause")
+            self.play_music = media_interface.get_dbus_method("Play")
+            self.next_music = media_interface.get_dbus_method("Next")
+            self.prev_music = media_interface.get_dbus_method("Previous")
+            self.player_executor.submit(self.play_on_connected)
 
     def on_audio_channel(self, channel):
         print("[player] selected audio channel {}".format(channel))
