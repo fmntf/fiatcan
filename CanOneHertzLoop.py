@@ -1,10 +1,11 @@
-import threading
 import time
 from can import Message
+
+from ExceptionAwareThread import ExceptionAwareThread
 from FiatProtocol import *
 
 
-class CanOneHertzLoop(threading.Thread):
+class CanOneHertzLoop(ExceptionAwareThread):
 
     should_run = True
     track_position = 0
@@ -27,7 +28,7 @@ class CanOneHertzLoop(threading.Thread):
         self.bm_ch_muted = Message(arbitration_id=CANID_BM_AUDIO_CHANNEL, data=bytearray(MASK_AUDIOCH_MUTED.bytes))
         self.bm_channel = self.bm_ch_muted
 
-    def run(self):
+    def try_run(self):
         watchdog1 = Message(arbitration_id=CANID_BM_WATCHDOG, data=bytearray(MESSAGE_BM_WATCHDOG1.bytes))
         watchdog2 = Message(arbitration_id=CANID_BM_WATCHDOG, data=bytearray(MESSAGE_BM_WATCHDOG2.bytes))
 

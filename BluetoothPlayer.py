@@ -1,10 +1,10 @@
 import dbus
 import dbus.mainloop.glib
 import re
-import threading
 import time
 from concurrent.futures.thread import ThreadPoolExecutor
 from gi.repository import GLib
+from ExceptionAwareThread import ExceptionAwareThread
 
 
 class BluetoothPlayer:

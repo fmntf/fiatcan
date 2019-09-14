@@ -1,7 +1,7 @@
 import dbus
 import dbus.mainloop.glib
-import threading
 from gi.repository import GLib
+from ExceptionAwareThread import ExceptionAwareThread
 
 
 class PhoneManager:
@@ -29,7 +29,7 @@ class PhoneManager:
                                      dbus_interface="org.ofono.VoiceCall",
                                      signal_name="PropertyChanged")
 
-        thread = threading.Thread(target=self.start)
+        thread = ExceptionAwareThread(target=self.start)
         thread.start()
 
     def on_signal(self, *args, **kwargs):

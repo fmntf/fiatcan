@@ -1,11 +1,11 @@
 import can
 import os
-import threading
+from ExceptionAwareThread import ExceptionAwareThread
 from FiatProtocol import *
 from SteeringWheelButtons import SteeringWheelButtons
 
 
-class BodyComputerManager(threading.Thread):
+class BodyComputerManager(ExceptionAwareThread):
 
     should_run = True
     listeners = {}
@@ -16,7 +16,7 @@ class BodyComputerManager(threading.Thread):
         self.bus = bus
         self.buttons = SteeringWheelButtons()
 
-    def run(self):
+    def try_run(self):
         br = can.BufferedReader()
         notifier = can.Notifier(self.bus, [br])
 
