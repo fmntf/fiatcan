@@ -2,7 +2,7 @@
 
 This repo documents with Python3 code the findings documented on [Medium](https://medium.com/@fmntf) regarding the CAN frames that you can observe in a Fiat Doblò type 263.
 
-The goal is to reimplement the [Blue&Me](https://en.wikipedia.org/wiki/Blue%26Me) infotainment system, abandoned by FCA after the release of UConnect.
+The goal is to prototype a reimplementation of the [Blue&Me](https://en.wikipedia.org/wiki/Blue%26Me) infotainment system, abandoned by FCA after the release of UConnect.
 
 ### Compatibility
 Although the code has been tested only on Fiat Doblò (263), most of those information may be valid for similar FCA cars equipped with Blue&Me, like:
@@ -17,6 +17,8 @@ Although the code has been tested only on Fiat Doblò (263), most of those infor
 Most of the infotainment related CAN frames have been decoded:
 
  * network wakeup / shutdown
- * PROXI validation
+ * PROXI protocol validation
  * steering wheel buttons
  * Media Player, Voice, Phone, Navigation, FM radio audio channels
+ * Bluetooth A2DP and HFP/HSP support
+ * debug menu on the instrument panel display
