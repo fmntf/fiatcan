@@ -13,10 +13,10 @@ else
 fi
 
 if [ ! -f /etc/pulse/original.pa ]; then
-    echo "Installing pulseaudio system configuration..."
+    echo "Backing-up pulseaudio system configuration..."
     cp /etc/pulse/default.pa /etc/pulse/original.pa
-    cp /etc/pulse/infotainment.pa /etc/pulse/default.pa
 fi
+cp /etc/pulse/infotainment.pa /etc/pulse/default.pa
 
 if [ -d /home/udooer/.pulse ]; then
     echo "Pulseaudio realtime configuration already set, skipping"

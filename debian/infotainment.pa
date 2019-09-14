@@ -140,6 +140,10 @@ load-module module-role-cork
 load-module module-filter-heuristics
 load-module module-filter-apply
 
+### Default volumes
+set-sink-volume alsa_output.usb-0d8c_USB_Sound_Device-00.analog-stereo 80000
+set-source-volume alsa_input.usb-0d8c_USB_Sound_Device-00.analog-stereo 90000
+
 .ifexists module-echo-cancel.so
 load-module module-echo-cancel aec_method=webrtc source_master=alsa_input.usb-0d8c_USB_Sound_Device-00.analog-stereo sink_master=alsa_output.usb-0d8c_USB_Sound_Device-00.analog-stereo source_name=cleanmic aec_args="analog_gain_control=0 digital_gain_control=1"
 .endif
@@ -147,8 +151,3 @@ load-module module-echo-cancel aec_method=webrtc source_master=alsa_input.usb-0d
 ### Make some devices default
 set-default-sink alsa_output.usb-0d8c_USB_Sound_Device-00.analog-stereo
 set-default-source cleanmic
-
-### Default volumes
-set-sink-volume alsa_output.usb-0d8c_USB_Sound_Device-00.analog-stereo 80000
-set-source-volume alsa_input.usb-0d8c_USB_Sound_Device-00.analog-stereo 90000
-
