@@ -3,3 +3,4 @@ set -e
 MOUNTPOINT=/data
 
 umount $MOUNTPOINT
+sync

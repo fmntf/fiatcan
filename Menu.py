@@ -1,4 +1,5 @@
 import os
+import os.path
 import time
 import subprocess
 
@@ -29,6 +30,13 @@ class Menu:
     candumping = None
 
     def __init__(self):
+        if os.path.isfile('/otgstorage/readwrite'):
+            fslabel = 'Make readonly'
+            is_readwrite = True
+        else:
+            fslabel = 'Make readwrite'
+            is_readwrite = False
+
         def dismiss_menu():
             self.active_items = []
             self.instpanel_display(None)
@@ -38,10 +46,14 @@ class Menu:
             time.sleep(sec)
             self.instpanel_display(None)
 
-        def info_callback():
+        def version_callback():
+            result = subprocess.run(["dpkg-query", "--showformat='${Version}'", "--show", "infotainment"], stdout=subprocess.PIPE)
+            infot_version = result.stdout.decode('UTF8').strip()
+
             result = subprocess.run(['uname', '-r'], stdout=subprocess.PIPE)
             kernel_version = result.stdout.decode('UTF8').strip()
-            self.instpanel_display(kernel_version)
+
+            self.instpanel_display("{}/{}".format(infot_version, kernel_version))
 
         def candump_callback():
             if self.candumping is None:
@@ -58,8 +70,8 @@ class Menu:
                     self.instpanel_display("umount error")
                 self.instpanel_display("dump stopped")
 
-        def reboot_callback():
-            temp_show("Rebooting...", 2)
+        def restart_callback():
+            temp_show("Restarting...", 2)
             subprocess.run(['sudo', 'systemctl', 'restart', 'infotainment'])
 
         def submenu_callback():
@@ -67,12 +79,24 @@ class Menu:
             item = self.get_active_item()
             self.instpanel_display(item.string, True)
 
+        def rootfs_callback():
+            if is_readwrite:
+                self.instpanel_display("Rebooting RO...")
+                os.system("sudo rootfsro")
+            else:
+                self.instpanel_display("Rebooting RW...")
+                os.system("sudo rootfsrw")
+
         self.menu = [
-            MenuItem('Kernel', info_callback),
+            MenuItem('Version', version_callback),
             MenuItem('Candump', candump_callback),
-            MenuItem('Reboot', submenu_callback, [
-                MenuItem('Confirm? Yes', reboot_callback),
+            MenuItem('Restart srvc', submenu_callback, [
                 MenuItem('Confirm? No', dismiss_menu),
+                MenuItem('Confirm? Yes', restart_callback),
+            ]),
+            MenuItem(fslabel, submenu_callback, [
+                MenuItem('Confirm? No', dismiss_menu),
+                MenuItem('Confirm? Yes', rootfs_callback),
             ]),
         ]
 
