@@ -55,8 +55,11 @@ class CanOneHertzLoop(ExceptionAwareThread):
         self.select_audio_channel()
 
     def on_bt_position(self, seconds):
-        print("Received track position: {}".format(seconds))
-        self.track_position = seconds
+        if seconds < 60*60:
+            print("Received track position: {}".format(seconds))
+            self.track_position = seconds
+        else:
+            print("Ignored track position: {}".format(seconds))
 
     def shutdown(self):
         self.should_run = False

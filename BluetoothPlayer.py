@@ -117,10 +117,14 @@ class BluetoothPlayer:
         elif interface == "org.bluez.MediaPlayer1":
             if "Track" in changed:
                 track = changed["Track"]
-                print("[player] track: {} - {}".format(track["Title"], track["Artist"]))
-                self.now_playing = [track["Title"], track["Artist"]]
-                self.tm.send_music(track["Title"], track["Artist"])
-                self.player_executor.submit(self.resend_track)
+                if track["Title"] == 'Not Provided':
+                    print("Invalid track received:")
+                    print(track)
+                else:
+                    print("[player] track: {} - {}".format(track["Title"], track["Artist"]))
+                    self.now_playing = [track["Title"], track["Artist"]]
+                    self.tm.send_music(track["Title"], track["Artist"])
+                    self.player_executor.submit(self.resend_track)
 
             if "Status" in changed:
                 self.play_status_executor.submit(self.evaluate_play_status, changed["Status"])
